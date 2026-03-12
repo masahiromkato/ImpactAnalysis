@@ -13,6 +13,7 @@ import {
   GraphCanvas,
   THEME
 } from './components';
+import { LOADING_PHASES, ERROR_MESSAGES, HISTORY_MESSAGES } from './constants/messages';
 
 import { useImpactGraph } from './hooks/useImpactGraph';
 
@@ -127,6 +128,9 @@ function App() {
     layoutedNodes.forEach(n => { if (n.type === 'impact') allNodeIds.add(n.id); });
     setExpandedNodes(allNodeIds);
     setLastExecuted(`${new Date().toLocaleString()}${isFromHistory ? ' (履歴)' : ' (Cache)'}`);
+    if (isFromHistory) {
+      console.log(HISTORY_MESSAGES.LOAD_SUCCESS);
+    }
   };
 
   /**
@@ -143,17 +147,16 @@ function App() {
     setLoadingMessage(null);
     setLastExecuted(null);
 
-    setLoadingMessage("AIによる分析を実行中...");
+    setLoadingMessage(LOADING_PHASES.INITIAL);
 
-    // フェーズごとのメッセージ更新タイマー
     const timer1 = setTimeout(() => {
-      setLoadingMessage("分析が複雑なため、通常より時間がかかっています...");
+      setLoadingMessage(LOADING_PHASES.COMPLEX);
     }, 15000);
     const timer2 = setTimeout(() => {
-      setLoadingMessage("最終的な論理構築を行っています。まもなく完了します...");
+      setLoadingMessage(LOADING_PHASES.LOGIC);
     }, 30000);
     const timer3 = setTimeout(() => {
-      setLoadingMessage("大規模なネットワークを構築中です。120秒以内に完了する見込みです...");
+      setLoadingMessage(LOADING_PHASES.NETWORK);
     }, 60000);
 
     const cacheKey = `${inputValue.trim()}_${selectedModel}`;
@@ -177,7 +180,7 @@ function App() {
         apiKey || undefined
       );
       // Step 2: Transform Data
-      setLoadingMessage("分析完了。グラフを描画中...");
+      setLoadingMessage(LOADING_PHASES.TRANSFORM);
       const { nodes: initialNodes, edges: generatedEdges, edgeDetails: generatedEdgeDetails } = transformImpactData(rawData);
 
       // Step 3: Layout Calculation
@@ -215,16 +218,16 @@ function App() {
         selectedModel
       });
 
-      let userMessage = "グラフの生成中にエラーが発生しました。";
+      let userMessage: string = ERROR_MESSAGES.GENERIC_ERROR;
       if (error instanceof Error) {
-        if (error.message.includes("API key")) {
-          userMessage = "APIキーが無効、または設定されていません。サイドバーのAPIキーを確認してください。";
+        if (error.message === ERROR_MESSAGES.API_KEY_REQUIRED) {
+          userMessage = ERROR_MESSAGES.API_KEY_INVALID;
         } else if (error.message.includes("fetch")) {
-          userMessage = "ネットワークエラーが発生しました。接続を確認してください。";
+          userMessage = ERROR_MESSAGES.NETWORK_ERROR;
         } else if (error.message.includes("QUOTA_EXCEEDED")) {
-          userMessage = error.message.replace("QUOTA_EXCEEDED: ", "") + "\n\n(※制限解除まであと数分〜数十分お待ちください。時間を置くと自動的に復活します)";
+          userMessage = error.message; // Already includes "RECOVERY_HINT" in constant
         } else {
-          userMessage = `エラー: ${error.message}`;
+          userMessage = ERROR_MESSAGES.ERROR_PREFIX(error.message);
         }
       }
       alert(userMessage);

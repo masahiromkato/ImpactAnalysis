@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play, RefreshCw, SlidersHorizontal, Activity } from 'lucide-react';
+import { HELP_TEXTS, ANALYSIS_NOTES } from '../constants/messages';
 
 // --- EventInput ---
 interface EventInputProps {
@@ -26,7 +27,7 @@ export const EventInput: React.FC<EventInputProps> = ({
                 <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="例: 中央銀行の予期せぬ利上げ..."
+                    placeholder={HELP_TEXTS.INPUT_PLACEHOLDER}
                 />
             </div>
 
@@ -75,7 +76,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
 }) => {
     return (
         <div className="input-group" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'help' }} title="AIが判定した影響力（スコア）に乗算する独自の感度パラメータです。スライダーを動かすとグラフの太さやヒートマップ表示が連動します。">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'help' }} title={HELP_TEXTS.SENSITIVITY_TOOLTIP}>
                 <SlidersHorizontal size={16} /> 感度パラメータ（影響の乗数）: {sensitivityMultiplier.toFixed(1)}x
             </label>
             <input
@@ -86,7 +87,7 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                 style={{ width: '100%', cursor: 'pointer' }}
             />
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1.2rem', cursor: 'help' }} title="指定したスコア以下のノードやエッジを非表示にします。複雑なグラフの重要な部分だけを抽出するのに便利です。">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1.2rem', cursor: 'help' }} title={HELP_TEXTS.FILTER_TOOLTIP}>
                 <Activity size={16} /> 影響度フィルタ（下限値）: {scoreThreshold.toFixed(2)}
             </label>
             <input
@@ -172,9 +173,10 @@ export const ImpactLegend: React.FC<ImpactLegendProps> = ({ tierItems }) => {
                     ))}
                 </div>
                 <div style={{ marginTop: '14px', fontSize: '11px', color: '#cbd5e1', lineHeight: '1.6', background: 'rgba(0,0,0,0.1)', padding: '8px', borderRadius: '4px' }}>
-                    <strong>影響度のスコア定義</strong><br />
-                    ・0〜±1.0までの範囲で表示されます。<br />
-                    ・数値の絶対値が大きいほど、波及効果が強力であることを示します。矢印の太さも比例して太くなります。<br />
+                    <strong>分析の読み方・補足</strong><br />
+                    {ANALYSIS_NOTES.SCORE_DEFINITION}<br />
+                    {ANALYSIS_NOTES.WACC_CAPEX_NOTE}<br />
+                    {ANALYSIS_NOTES.STRUCTURAL_CHANGE}<br />
                 </div>
             </div>
         </div>

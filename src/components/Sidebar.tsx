@@ -9,6 +9,7 @@ import {
     TimeHorizonFilters,
     ImpactLegend
 } from './SidebarParts';
+import { HISTORY_MESSAGES } from '../constants/messages';
 
 interface SidebarProps {
     isSidebarOpen: boolean;
@@ -167,7 +168,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <label style={{ margin: 0 }}>分析履歴 (最新10件)</label>
                             <button
-                                onClick={clearHistory}
+                                onClick={() => {
+                                    if (window.confirm(HISTORY_MESSAGES.CLEAR_CONFIRM)) {
+                                        clearHistory();
+                                    }
+                                }}
                                 style={{ fontSize: '0.7rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}
                             >
                                 全削除

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { SYSTEM_PROMPT } from './constants/prompts';
+import { ERROR_MESSAGES } from './constants/messages';
 
 export interface ImpactDataNode {
     source: string;
@@ -53,7 +54,7 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
     const finalApiKey = (apiKey && apiKey.trim()) || (import.meta.env.VITE_GEMINI_API_KEY as string);
 
     if (!finalApiKey || !finalApiKey.trim()) {
-        throw new Error("Gemini API Key is required.");
+        throw new Error(ERROR_MESSAGES.API_KEY_REQUIRED);
     }
 
     const genAI = new GoogleGenAI({ apiKey: finalApiKey.trim() });
@@ -79,7 +80,7 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
         console.log("Raw Gemini Response:", text);
 
         if (!text) {
-            throw new Error("No text returned from Gemini API");
+            throw new Error(ERROR_MESSAGES.NO_TEXT_RETURNED);
         }
 
         const sanitizedText = repairTruncatedJson(text);
@@ -108,7 +109,7 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
             });
         } catch (e) {
             console.error("JSON Parsing failed after repair. Sanitized Text:", sanitizedText);
-            throw new Error(`Invalid JSON format: ${e instanceof Error ? e.message : String(e)}`);
+            throw new Error(ERROR_MESSAGES.INVALID_JSON(e instanceof Error ? e.message : String(e)));
         }
 
     } finally {
@@ -123,13 +124,13 @@ export async function generateImpactGraphWithCatch(eventText: string, modelName:
         console.error("Impact Analysis Error:", error);
 
         if (error.name === 'AbortError') {
-            throw new Error(`TIMEOUT: 分析に120秒以上かかったため中断しました。事象を短くするか、別のモデルをお試しください。`);
+            throw new Error(ERROR_MESSAGES.TIMEOUT);
         }
         if (error.message?.includes("RESOURCE_EXHAUSTED") || error.status === "RESOURCE_EXHAUSTED" || error.code === 429) {
-            throw new Error(`QUOTA_EXCEEDED: リクエスト制限に達しました。しばらく待ってから再度お試しください。`);
+            throw new Error(ERROR_MESSAGES.QUOTA_EXCEEDED);
         }
         if (error.message?.includes("UNAVAILABLE") || error.status === "UNAVAILABLE" || error.code === 503) {
-            throw new Error(`SERVICE_UNAVAILABLE: 現在モデルへのリクエストが集中しています。時間をおいてから、または別のモデルでお試しください。`);
+            throw new Error(ERROR_MESSAGES.SERVICE_UNAVAILABLE);
         }
 
         throw error;
