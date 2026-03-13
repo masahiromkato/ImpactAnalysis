@@ -50,7 +50,17 @@ function repairTruncatedJson(text: string): string {
     return repaired;
 }
 
-export async function generateImpactGraph(eventText: string, modelName: string, apiKey?: string): Promise<ImpactDataNode[]> {
+/**
+ * 指定されたミリ秒数待機します。
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function generateImpactGraph(
+    eventText: string,
+    modelName: string,
+    apiKey?: string,
+    retryCount = 0
+): Promise<ImpactDataNode[]> {
     const finalApiKey = (apiKey && apiKey.trim()) || (import.meta.env.VITE_GEMINI_API_KEY as string);
 
     if (!finalApiKey || !finalApiKey.trim()) {
@@ -61,7 +71,7 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
     const prompt = SYSTEM_PROMPT(eventText);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒タイムアウト
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 300秒（5分）タイムアウト
 
     try {
         const response = await genAI.models.generateContent({
@@ -76,8 +86,7 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
         });
 
         const text = response.text;
-        console.log("Raw Gemini Response Length:", text.length);
-        console.log("Raw Gemini Response:", text);
+        console.log(`[Attempt ${retryCount + 1}] Raw Gemini Response Length:`, text.length);
 
         if (!text) {
             throw new Error(ERROR_MESSAGES.NO_TEXT_RETURNED);
@@ -87,8 +96,6 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
 
         try {
             const rawResult: any[] = JSON.parse(sanitizedText);
-            console.log("JSON Length (Parsed):", rawResult.length);
-
             return rawResult.map(item => {
                 let score = parseFloat(String(item.impact_score));
                 if (isNaN(score)) score = 0;
@@ -112,6 +119,20 @@ export async function generateImpactGraph(eventText: string, modelName: string, 
             throw new Error(ERROR_MESSAGES.INVALID_JSON(e instanceof Error ? e.message : String(e)));
         }
 
+    } catch (error: any) {
+        // 503 (SERVICE_UNAVAILABLE) の場合のみリトライ
+        const isUnavailable = error.message?.includes("503") ||
+            error.status === "UNAVAILABLE" ||
+            error.message?.includes("RESOURCE_EXHAUSTED"); // 混雑時はこれも含める場合がある
+
+        if (isUnavailable && retryCount < 1) {
+            const waitTime = 6000 * (retryCount + 1);
+            console.warn(`Gemini API is busy (503). Retrying in ${waitTime}ms... (Attempt ${retryCount + 1}/2)`);
+            await sleep(waitTime);
+            return generateImpactGraph(eventText, modelName, apiKey, retryCount + 1);
+        }
+
+        throw error;
     } finally {
         clearTimeout(timeoutId);
     }
@@ -123,14 +144,19 @@ export async function generateImpactGraphWithCatch(eventText: string, modelName:
     } catch (error: any) {
         console.error("Impact Analysis Error:", error);
 
-        if (error.name === 'AbortError') {
+        // 1. タイムアウト (AbortError) のハンドリング
+        if (error.name === 'AbortError' || error.message?.includes("signal is aborted")) {
             throw new Error(ERROR_MESSAGES.TIMEOUT);
         }
-        if (error.message?.includes("RESOURCE_EXHAUSTED") || error.status === "RESOURCE_EXHAUSTED" || error.code === 429) {
-            throw new Error(ERROR_MESSAGES.QUOTA_EXCEEDED);
-        }
-        if (error.message?.includes("UNAVAILABLE") || error.status === "UNAVAILABLE" || error.code === 503) {
+
+        // 2. 503 (UNAVAILABLE) の最終ハンドリング
+        if (error.message?.includes("503") || error.status === "UNAVAILABLE") {
             throw new Error(ERROR_MESSAGES.SERVICE_UNAVAILABLE);
+        }
+
+        // 3. クォータ制限
+        if (error.message?.includes("RESOURCE_EXHAUSTED") || error.code === 429) {
+            throw new Error(ERROR_MESSAGES.QUOTA_EXCEEDED);
         }
 
         throw error;

@@ -5,3 +5,4 @@ export * from './ImpactNode';
 export * from './TierGroupNode';
 export * from './SidebarParts';
 export * from './theme';
+export * from './LoginGuard';

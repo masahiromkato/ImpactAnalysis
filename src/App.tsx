@@ -11,6 +11,7 @@ import {
   Sidebar,
   EvidencePanel,
   GraphCanvas,
+  LoginGuard,
   THEME
 } from './components';
 import { LOADING_PHASES, ERROR_MESSAGES, HISTORY_MESSAGES } from './constants/messages';
@@ -154,10 +155,10 @@ function App() {
     }, 15000);
     const timer2 = setTimeout(() => {
       setLoadingMessage(LOADING_PHASES.LOGIC);
-    }, 30000);
+    }, 60000);
     const timer3 = setTimeout(() => {
       setLoadingMessage(LOADING_PHASES.NETWORK);
-    }, 60000);
+    }, 150000);
 
     const cacheKey = `${inputValue.trim()}_${selectedModel}`;
     if (cache[cacheKey]) {
@@ -240,9 +241,9 @@ function App() {
     }
   };
 
-
   return (
-    <div className="app-container" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <LoginGuard>
+      <div className="app-container" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
@@ -283,6 +284,7 @@ function App() {
         <EvidencePanel edgeDetails={edgeDetails} />
       </main>
     </div >
+    </LoginGuard>
   );
 }
 
